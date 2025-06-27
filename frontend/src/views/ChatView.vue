@@ -142,8 +142,9 @@ const sendMessage = async () => {
 
 const formatMessage = (content) => {
   // Сначала обрабатываем ссылки на источники, превращая их в кликабельные теги <a>
+  // Регулярное выражение теперь опционально обрабатывает "Источник: "
   const processedContent = content.replace(
-    /\[Источник: (.*?),(?:\s*страница|\s*стр\.)\s*(\d+)\]/g,
+    /\[(?:Источник:\s*)?(.*?),(?:\s*страница|\s*стр\.)\s*(\d+)\]/g,
     (match, filename, page) => {
       const url = `http://localhost:8000/static/uploads/${filename.trim()}#page=${page}`;
       // Возвращаем HTML-ссылку. Класс 'source-link' позволит нам стилизовать ее.
