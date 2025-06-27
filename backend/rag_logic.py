@@ -67,13 +67,26 @@ async def process_chat_message(question: str, vectorstore: Chroma):
 
     rag_chain = get_rag_chain(vectorstore)
     answer = await rag_chain.ainvoke(question)
+
+    # Ключевые фразы, указывающие на отсутствие ответа
+    no_answer_phrases = [
+        "информация отсутствует",
+        "невозможно дать ответ",
+        "не нашел ответа",
+        "не могу дать ответ",
+    ]
+
+    # Проверяем, содержит ли ответ одну из этих фраз (в нижнем регистре)
+    if any(phrase in answer.lower() for phrase in no_answer_phrases):
+        return {"answer": answer, "sources": []}
     
+    # Если ответ найден, собираем и возвращаем источники
     sources = [
         {
-                "source": doc.metadata.get("source", "N/A"),
-                "page": doc.metadata.get("page", "N/A")
-            }
-            for doc in docs
-        ]
+            "source": doc.metadata.get("source", "N/A"),
+            "page": doc.metadata.get("page", "N/A")
+        }
+        for doc in docs
+    ]
         
     return {"answer": answer, "sources": sources}
