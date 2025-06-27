@@ -141,18 +141,8 @@ const sendMessage = async () => {
 };
 
 const formatMessage = (content) => {
-  // Сначала обрабатываем ссылки на источники, превращая их в кликабельные теги <a>
-  // Регулярное выражение теперь опционально обрабатывает "Источник: "
-  const processedContent = content.replace(
-    /\[(?:Источник:\s*)?(.*?),(?:\s*страница|\s*стр\.)\s*(\d+)\]/g,
-    (match, filename, page) => {
-      const url = `http://localhost:8000/static/uploads/${filename.trim()}#page=${page}`;
-      // Возвращаем HTML-ссылку. Класс 'source-link' позволит нам стилизовать ее.
-      return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="source-link">${match}</a>`;
-    }
-  );
-  // Затем обрабатываем остальной текст как Markdown
-  return marked(processedContent, { breaks: true });
+  // Просто обрабатываем текст как Markdown
+  return marked(content, { breaks: true });
 };
 
 const autoResizeTextarea = () => {
@@ -400,22 +390,6 @@ textarea:focus {
   color: var(--ink-primary);
 }
 
-/* Стили для встроенных ссылок на источники */
-.source-link {
-  text-decoration: underline;
-  opacity: 0.9;
-}
 
-.source-link:hover {
-  opacity: 1;
-}
-
-.message-wrapper.user .source-link {
-  color: var(--ink-text-light); /* Белый цвет для сообщений пользователя */
-}
-
-.message-wrapper.assistant .source-link {
-  color: var(--ink-primary); /* Фиолетовый цвет для сообщений ассистента */
-}
 
 </style>

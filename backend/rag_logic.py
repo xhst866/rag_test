@@ -21,7 +21,7 @@ PROMPT_TEMPLATE = """
 Ты — полезный ассистент. Твоя задача — отвечать на вопросы пользователя, основываясь на содержании предоставленных ниже документов.
 Твой ответ должен быть основан только на фактах из текста. Избегай домыслов.
 Если информация для ответа явно отсутствует в контексте, сообщи, что ты не можешь дать ответ на основе имеющихся данных.
-Для каждого утверждения в своем ответе ты должен указать источник в формате [Источник: название_файла, страница X].
+
 
 Контекст:
 {context}
@@ -68,5 +68,12 @@ async def process_chat_message(question: str, vectorstore: Chroma):
     rag_chain = get_rag_chain(vectorstore)
     answer = await rag_chain.ainvoke(question)
     
-    # Источники теперь встроены в ответ, поэтому возвращаем пустой список
-    return {"answer": answer, "sources": []}
+    sources = [
+        {
+                "source": doc.metadata.get("source", "N/A"),
+                "page": doc.metadata.get("page", "N/A")
+            }
+            for doc in docs
+        ]
+        
+        return {"answer": answer, "sources": sources}
