@@ -1,8 +1,6 @@
 <template>
   <div class="chat-view">
-    <header class="chat-header">
-      <img src="https://thb.tildacdn.one/tild6633-6438-4463-a662-383938303066/-/resize/200x/_IT__Inktech______-_.png" alt="Inktech Logo" class="logo-img"/>
-    </header>
+
     <div class="messages-container" ref="messagesContainer">
       <div v-for="(message, index) in messages" :key="index" :class="['message-wrapper', message.role]">
         <div class="message-bubble">
