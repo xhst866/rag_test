@@ -9,7 +9,7 @@
             <strong>Источники:</strong>
             <ul>
               <li v-for="(source, i) in message.sources" :key="i">
-                <a :href="`http://localhost:8000/static/uploads/${source.source}#page=${source.page + 1}`" target="_blank" rel="noopener noreferrer">
+                <a :href="`${backendUrl}/static/uploads/${encodeURIComponent(source.source)}#page=${source.page + 1}`" target="_blank" rel="noopener noreferrer">
                   {{ source.source }}, стр. {{ source.page + 1 }}
                 </a>
               </li>
@@ -48,6 +48,8 @@
 <script setup>
 import { ref, onMounted, nextTick, watch } from 'vue';
 import { marked } from 'marked';
+
+const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
 
 const messages = ref([]);
 const userInput = ref('');

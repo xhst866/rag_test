@@ -14,6 +14,11 @@ RUN npm cache clean --force && npm install
 # Копируем исходный код
 COPY . .
 
+# Принимаем аргумент сборки
+ARG VITE_BACKEND_URL
+# Устанавливаем его как переменную окружения
+ENV VITE_BACKEND_URL=$VITE_BACKEND_URL
+
 # Собираем приложение
 RUN npm run build
 

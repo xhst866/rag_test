@@ -26,6 +26,8 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        VITE_BACKEND_URL: ${BACKEND_URL:-http://localhost:8000}
     container_name: rag-frontend
     restart: unless-stopped
     ports:
@@ -35,6 +37,7 @@ services:
       - /app/node_modules
     environment:
       - VITE_API_URL=/api
+      - BACKEND_URL=${BACKEND_URL:-http://localhost:8000}
     networks:
       - rag-network
     depends_on:
