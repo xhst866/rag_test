@@ -1,0 +1,13 @@
+:root {
+  --ink-primary: #6941FF;
+  --ink-text-dark: #1A1A1A;
+  --ink-text-light: #FFFFFF;
+  --ink-text-secondary: #666666;
+  --ink-surface: #F5F5F7;
+  --ink-border: #EAEAEA;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
+}

@@ -17,6 +17,7 @@ services:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - CHROMA_DB_PATH=/app/chroma_db
       - APP_DEBUG=True
+      - BOT_PERSONALITY=${BOT_PERSONALITY}
     networks:
       - rag-network
     depends_on:

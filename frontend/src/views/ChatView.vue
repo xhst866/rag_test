@@ -20,6 +20,17 @@
     </div>
 
     <div class="input-panel">
+       <div class="settings-bar">
+        <div class="personality-selector">
+          <label for="personality">Стиль ответов:</label>
+          <select v-model="selectedPersonality" id="personality">
+            <option value="default">Обычный</option>
+            <option value="witty">Остроумный</option>
+            <option value="lazy">Ленивый кассир</option>
+            <option value="sarcastic">Жесткий сарказм</option>
+          </select>
+        </div>
+      </div>
       <div v-if="selectedFile" class="file-preview">
         <span>{{ selectedFile.name }}</span>
         <button @click="uploadFile" :disabled="isUploading" class="upload-confirm-btn">{{ isUploading ? '...' : '▲' }}</button>
@@ -37,36 +48,56 @@
           rows="1"
           ref="textarea"
         ></textarea>
-        <button class="icon-btn send-btn" @click="sendMessage" :disabled="!userInput.trim() && !isUploading">
+        <button class="icon-btn send-btn" @click="sendMessage" :disabled="!userInput.trim()">
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
         </button>
       </div>
     </div>
+
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted, nextTick, watch } from 'vue';
+import DOMPurify from 'dompurify';
 import { marked } from 'marked';
-
-const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
 
 const messages = ref([]);
 const userInput = ref('');
 const selectedFile = ref(null);
 const isUploading = ref(false);
 const fileInput = ref(null);
-const textarea = ref(null);
 const messagesContainer = ref(null);
+const textarea = ref(null);
+const selectedPersonality = ref('default');
 
-// Auto-scroll logic
-watch(messages, async () => {
-  await nextTick();
+const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
+
+const formatMessage = (content) => {
+  const rawHtml = marked.parse(content || '');
+  return DOMPurify.sanitize(rawHtml);
+};
+
+const scrollToBottom = () => {
   if (messagesContainer.value) {
     messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight;
   }
-}, { deep: true });
+};
 
+const adjustTextareaHeight = () => {
+  if (textarea.value) {
+    textarea.value.style.height = 'auto';
+    textarea.value.style.height = `${textarea.value.scrollHeight}px`;
+  }
+};
+
+onMounted(() => {
+  messages.value.push({ role: 'assistant', content: 'Здравствуйте! Загрузите PDF или TXT файл, и я отвечу на ваши вопросы по его содержанию.' });
+  adjustTextareaHeight();
+});
+
+watch(userInput, adjustTextareaHeight);
+watch(messages, () => nextTick(scrollToBottom), { deep: true });
 
 const triggerFileInput = () => {
   fileInput.value.click();
@@ -75,57 +106,64 @@ const triggerFileInput = () => {
 const handleFileChange = (event) => {
   const file = event.target.files[0];
   if (file) {
+    if (file.size > 5 * 1024 * 1024) {
+        alert('Размер файла не должен превышать 5 МБ.');
+        return;
+    }
     selectedFile.value = file;
   }
 };
 
 const clearSelectedFile = () => {
   selectedFile.value = null;
-  fileInput.value.value = ''; // Reset file input
+  fileInput.value.value = '';
 };
 
 const uploadFile = async () => {
   if (!selectedFile.value) return;
   isUploading.value = true;
-  
+
   const formData = new FormData();
   formData.append('file', selectedFile.value);
 
   try {
-    const response = await fetch('/api/upload', {
+    const response = await fetch(`${backendUrl}/api/upload`, {
       method: 'POST',
       body: formData,
     });
 
-    const result = await response.json();
+    const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(result.detail || 'Ошибка при загрузке файла.');
+      throw new Error(data.detail || 'Ошибка при загрузке файла');
     }
 
-    messages.value.push({ role: 'assistant', content: `Файл *${result.filename}* успешно загружен.` });
+    messages.value.push({ role: 'assistant', content: `Файл \"${selectedFile.value.name}\" успешно загружен. Теперь вы можете задавать по нему вопросы.` });
     clearSelectedFile();
   } catch (error) {
-    messages.value.push({ role: 'assistant', content: `Ошибка: ${error.message}` });
+    console.error('Ошибка:', error);
+    messages.value.push({ role: 'assistant', content: `Ошибка при загрузке файла: ${error.message}` });
   } finally {
     isUploading.value = false;
   }
 };
 
 const sendMessage = async () => {
-  const messageContent = userInput.value.trim();
-  if (!messageContent) return;
+  const currentInput = userInput.value.trim();
+  if (!currentInput) return;
 
-  messages.value.push({ role: 'user', content: messageContent });
+  const currentMessages = [...messages.value, { role: 'user', content: currentInput }];
+  messages.value = currentMessages;
   userInput.value = '';
-  autoResizeTextarea();
+  adjustTextareaHeight();
 
   try {
-    const response = await fetch('/api/chat', {
+    const response = await fetch(`${backendUrl}/api/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        messages: messages.value,
+        messages: currentMessages,
+        personality: selectedPersonality.value
       }),
     });
 
@@ -135,82 +173,35 @@ const sendMessage = async () => {
     }
 
     const data = await response.json();
-    messages.value.push({ role: 'assistant', content: data.answer, sources: data.sources });
+    messages.value = [...currentMessages, { role: 'assistant', content: data.answer, sources: data.sources }];
 
   } catch (error) {
-    messages.value.push({ role: 'assistant', content: `Ошибка: ${error.message}` });
+    console.error('Ошибка при отправке сообщения:', error);
+    messages.value = [...currentMessages, { role: 'assistant', content: `Произошла ошибка: ${error.message}` }];
+  } finally {
+    nextTick(() => {
+      scrollToBottom();
+    });
   }
 };
-
-const formatMessage = (content) => {
-  // Просто обрабатываем текст как Markdown
-  return marked(content, { breaks: true });
-};
-
-const autoResizeTextarea = () => {
-  const ta = textarea.value;
-  if (ta) {
-    ta.style.height = 'auto';
-    ta.style.height = `${ta.scrollHeight}px`;
-  }
-};
-
-onMounted(() => {
-  messages.value.push({ role: 'assistant', content: 'Здравствуйте! Загрузите PDF или TXT файл и задайте мне вопрос по его содержимому.' });
-  textarea.value.addEventListener('input', autoResizeTextarea);
-});
-
 </script>
 
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap');
-
-:root {
-  --ink-bg: #FFFFFF;
-  --ink-primary: #6941FF;
-  --ink-text-light: #FFFFFF;
-  --ink-text-dark: #111111;
-  --ink-text-secondary: #6c757d;
-  --ink-border: #F0F0F0;
-  --ink-surface: #F5F5F7;
-}
-
-html, body {
-  height: 100%;
-  margin: 0;
-  font-family: 'Roboto', sans-serif;
-  background-color: var(--ink-bg);
-  color: var(--ink-text-dark);
-}
-
-#app {
-  height: 100%;
-}
-
+<style scoped>
 .chat-view {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  height: 100vh;
+  width: 100%;
   max-width: 800px;
   margin: 0 auto;
-  background-color: var(--ink-bg);
-}
-
-.chat-header {
-  padding: 24px 32px;
-  background-color: var(--ink-bg);
-  text-align: left;
-}
-
-.logo-img {
-  height: 28px;
-  vertical-align: middle;
+  background-color: var(--ink-text-light);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
 }
 
 .messages-container {
   flex: 1;
   overflow-y: auto;
-  padding: 16px 32px;
+  padding: 24px;
   display: flex;
   flex-direction: column;
   gap: 24px;
@@ -218,51 +209,87 @@ html, body {
 
 .message-wrapper {
   display: flex;
-  width: 100%;
+  max-width: 85%;
 }
 
 .message-wrapper.user {
-  justify-content: flex-end;
+  align-self: flex-end;
+  flex-direction: row-reverse;
 }
 
 .message-wrapper.assistant {
-  justify-content: flex-start;
+  align-self: flex-start;
 }
 
 .message-bubble {
-  max-width: 80%;
-  padding: 16px 22px;
-  border-radius: 24px;
+  padding: 12px 16px;
+  border-radius: 18px;
   line-height: 1.6;
-  word-wrap: break-word;
 }
 
 .message-wrapper.user .message-bubble {
   background-color: var(--ink-primary);
   color: var(--ink-text-light);
-  border-bottom-right-radius: 8px;
+  border-top-right-radius: 4px;
 }
 
 .message-wrapper.assistant .message-bubble {
   background-color: var(--ink-surface);
   color: var(--ink-text-dark);
-  border-bottom-left-radius: 8px;
+  border-top-left-radius: 4px;
+}
+
+.message-content :deep(p) {
+  margin: 0 0 8px 0;
+}
+.message-content :deep(p:last-child) {
+  margin-bottom: 0;
 }
 
 .input-panel {
-  padding: 24px 32px;
-  background-color: var(--ink-bg);
+  padding: 16px 24px;
+  background-color: var(--ink-text-light);
   border-top: 1px solid var(--ink-border);
+}
+
+.settings-bar {
+  padding: 0 0 12px 0;
+  background-color: var(--ink-text-light);
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.personality-selector {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.personality-selector label {
+  font-weight: 500;
+  font-size: 14px;
+  color: var(--ink-text-secondary);
+}
+
+.personality-selector select {
+  padding: 5px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--ink-border);
+  background-color: #fff;
+  font-family: inherit;
+  color: var(--ink-text-dark);
+  outline: none;
 }
 
 .file-preview {
   display: flex;
   align-items: center;
-  font-size: 14px;
-  margin-bottom: 16px;
+  padding: 8px;
   background-color: var(--ink-surface);
-  padding: 10px 14px;
   border-radius: 12px;
+  margin-bottom: 12px;
+  font-size: 14px;
 }
 
 .file-preview span {
@@ -391,7 +418,4 @@ textarea:focus {
 .message-wrapper.assistant .sources-list a {
   color: var(--ink-primary);
 }
-
-
-
 </style>

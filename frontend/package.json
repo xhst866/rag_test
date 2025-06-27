@@ -10,10 +10,12 @@
   },
   "dependencies": {
     "vue": "^3.4.21",
-    "marked": "^13.0.0"
+    "marked": "^13.0.0",
+    "dompurify": "^3.1.6"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.0.4",
-    "vite": "^5.1.6"
+    "vite": "^5.1.6",
+    "@types/dompurify": "^3.0.5"
   }
 }

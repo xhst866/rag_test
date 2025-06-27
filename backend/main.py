@@ -56,6 +56,7 @@ class Message(BaseModel):
 class ChatRequest(BaseModel):
     messages: List[Message]
     conversation_id: Optional[str] = None
+    personality: Optional[str] = None
 
 # Тестовый эндпоинт
 @app.get("/health")
@@ -132,14 +133,18 @@ async def upload_file(file: UploadFile = File(...), vectorstore: Chroma = Depend
 
 # Эндпоинт для чата
 @app.post("/api/chat")
-async def chat(chat_request: ChatRequest, db: Chroma = Depends(get_vectorstore)):
-    last_message = chat_request.messages[-1].content
-    if not last_message:
+async def chat(request: ChatRequest, db: Chroma = Depends(get_vectorstore)):
+    user_message = request.messages[-1]
+    if not user_message.content:
         raise HTTPException(status_code=400, detail="Сообщение не может быть пустым")
 
     try:
-        response = await process_chat_message(last_message, db)
-        return response  # Возвращаем объект {"answer": ..., "sources": ...}
+        response = await process_chat_message(
+            question=user_message.content, 
+            vectorstore=db,
+            personality=request.personality
+        )
+        return response
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ошибка при обработке запроса: {str(e)}")
 
