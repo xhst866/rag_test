@@ -76,4 +76,4 @@ async def process_chat_message(question: str, vectorstore: Chroma):
             for doc in docs
         ]
         
-        return {"answer": answer, "sources": sources}
+    return {"answer": answer, "sources": sources}
