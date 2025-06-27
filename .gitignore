@@ -1,0 +1,22 @@
+# Файлы окружения
+.env
+backend/credentials.json
+
+# Директории с данными
+/backend/uploads/
+/chroma_data/
+/test_data/
+
+# Исключения для Python
+__pycache__/
+*.pyc
+
+# Исключения для Node.js
+/frontend/node_modules/
+
+# Исключения для macOS
+.DS_Store
+
+# Временные файлы IDE
+.idea/
+.vscode/
